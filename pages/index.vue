@@ -1,66 +1,285 @@
 <template>
-    <div>
-        <h1>POG wallet</h1>
-        <p>Address: {{ myWallet }}</p>
-        <p>POG balance: {{ pogBalance }}</p>
-        <button @click="loadBalance">Load balances</button><BR/><BR/>
-        <div>Send: <input v-model.number="sendValue"> POG to <input v-model="sendAddress"> <input type="button" @click="sendPOG" value="Send"></div>
-    </div>
+      <div>
+          <div>
+              <div class="connectClass">
+                  <div v-if="myWallet">My Wallet: {{ myWallet }}</div>
+                  <div><button class="buttonConnect"
+                               :class="{ active: MetamaskActive }"
+                               @click="connectMatamask">Connect Metamask(Web3)</button></div>
+                  <div><button class="buttonConnect walletConnect"
+                               :class="{ active: WalletConnectActive }"
+                               @click="WalletConnect"></button></div>
+              </div>
+          </div>
+          <div>My POG balance: <b>{{ pogData.pogBalance }}</b></div>
+          <div class="casesCards">
+              <pog-stake-card case-name="Bronze"
+                              :pog-balance="pogData.pogBalance"
+                              :balance="pogData.bronzeNFT"
+                              :approved-num="approvedNum"
+                              :stakes="pogData.activeStakes['5']"></pog-stake-card>
+              <pog-stake-card case-name="Silver"
+                              :pog-balance="pogData.pogBalance"
+                              :balance="pogData.silverNFT"
+                              :approved-num="approvedNum"
+                              :stakes="pogData.activeStakes['4']"></pog-stake-card>
+              <pog-stake-card case-name="Gold"
+                              :pog-balance="pogData.pogBalance"
+                              :balance="pogData.goldNFT"
+                              :approved-num="approvedNum"
+                              :stakes="pogData.activeStakes['2']"></pog-stake-card>
+              <pog-stake-card case-name="Platinum"
+                              :pog-balance="pogData.pogBalance"
+                              :balance="pogData.platinumNFT"
+                              :approved-num="approvedNum"
+                              :stakes="pogData.activeStakes['3']"></pog-stake-card>
+          </div>
+      </div>
 </template>
 
 <script>
-    export default {
-        name: "Wallet",
-        props: {
-            myWallet: String
-        },
-        data() {
-            return {
-                pogBalance:0,
-                sendValue: 0,
-                sendAddress: ''
+export default {
+    data() {
+        return {
+            myWallet: '',
+            MetamaskActive: false,
+            WalletConnectActive: false,
+            pogData: {
+                approvedNFT: false,
+                approvedCoin: false,
+                pogBalance:'0.0',
+                bronzeNFT:'0',
+                silverNFT:'0',
+                goldNFT:'0',
+                platinumNFT:'0',
+                activeStakes: {}
+            },
+        };
+    },
+    computed: {
+        approvedNum() {
+            let counter = 0;
+            if(this.pogData.approvedNFT)
+                counter++;
+            if(this.pogData.approvedCoin)
+                counter++;
+            return counter;
+        }
+    },
+    methods: {
+        loadBalance: function() {
+            console.log('Load Bals');
+            if(this.myWallet > '') {
+                this.$Web3.POGBalance(this.myWallet).then(balance => {
+                    this.pogData.pogBalance = balance;
+                })
+            } else {
+                this.pogData.pogBalance = '0.00';
             }
         },
-        methods: {
-            loadBalance: function() {
-                console.log('Load Bals');
-                this.$Web3.POGBalance(this.myWallet).then(balance => {
-                    console.log(balance);
-                    this.pogBalance = balance;
-                })
-            },
-            sendPOG: function () {
-                this.$Web3.POGTransfer(this.sendAddress, this.sendValue).then((status) => {
-                    console.log("Status of transfer: "+status);
-                    if(status === true) {
-                        alert("Transaction complited");
-                    }
-                    if(status === false) {
-                        alert("Transaction cancelled");
-                    }
-                    this.loadBalance();
+        getBoxes: function() {
+            if(this.myWallet > '') {
+                this.$Web3.NFTBalance(this.myWallet).then(balance => {
+                    this.pogData.bronzeNFT = balance[0].toString();
+                    this.pogData.silverNFT = balance[1].toString();
+                    this.pogData.goldNFT = balance[2].toString();
+                    this.pogData.platinumNFT = balance[3].toString();
                 });
             }
         },
-        watch: {
-            myWallet(newWallet, oldWallet) {
-                console.log('Watcher myWallet');
-                console.log(newWallet);
-                if(newWallet > '') {
-                    this.loadBalance();
-                } else {
-                    this.pogBalance = 0;
+        getAllowance: function () {
+            console.log('Check allowance');
+            if(this.myWallet > '') {
+                this.$Web3.CheckApprove(this.myWallet).then(allowance => {
+                    console.log(allowance);
+                    this.pogData.approvedNFT = allowance[0];
+                    this.pogData.approvedCoin = allowance[1];
+                });
+            }
+        },
+        sendAllow: async function () {
+            console.log('sendAllow');
+            if(!this.pogData.approvedNFT) {
+                let status = await this.$Web3.ApproveNFT();
+                if(status)
+                    this.pogData.approvedNFT = true;
+            }
+            if(!this.pogData.approvedCoin) {
+                let status = await this.$Web3.ApproveCoin();
+                if(status)
+                    this.pogData.approvedCoin = true;
+            }
+        },
+        getStakes: async function() {
+            console.log('getStakes');
+            if(this.myWallet > '') {
+                this.$Web3.getStakes(this.myWallet).then(stakes => {
+                    const units = {
+                        year  : 24 * 60 * 60 * 365,
+                        month : 24 * 60 * 60 * 365/12,
+                        day   : 24 * 60 * 60,
+                        hour  : 60 * 60,
+                        minute: 60,
+                        second: 1
+                    }
+                    this.pogData.activeStakes = stakes;
+                })
+            }
+        },
+        stakePog: async function (params) {
+
+            const boxID = params[0];
+            const boxCount = params[1];
+            const stakeAmount = params[2];
+            console.log('StakeBox');
+            if(this.pogData.pogBalance < params[3]) {alert('You do not have enought POG balance. '+params[3]+' POG needed'); return;}
+            if(this.approvedNum < 2) {alert('You do not have all approves needed'); return;}
+            let status = await this.$Web3.stakePOG(boxID, boxCount);
+            if(status) {
+                alert('Stake successful.');
+                this.loadBalance();
+                this.getBoxes();
+                this.getStakes();
+            } else {
+                alert('Error: Transaction not confirmed.');
+            }
+        },
+        claimPog: async function (stakeIDs) {
+            console.log('StakeBox');
+            console.log(stakeIDs);
+            let status = await this.$Web3.claimPOG(stakeIDs);
+            if(status) {
+                alert('Claimed successful.');
+                this.loadBalance();
+                this.getBoxes();
+                this.getStakes();
+            } else {
+                alert('Error: Transaction not confirmed.');
+            }
+        },
+        connectMatamask: async function () {
+            if (window.ethereum) {
+                this.$Web3.setProvider(window.ethereum);
+                try {
+                    let accounts = await this.$Web3.getProvider().send("eth_requestAccounts");
+                    console.log(accounts);
+                    this.myWallet = await this.$Web3.getSigner().getAddress();
+                    this.MetamaskActive = true;
+//                    this.myWallet = accounts[0];
+                    return true;
+                } catch (error) {
+                    this.MetamaskActive = false;
+                    console.log(error);
+                    return false;
                 }
             }
         },
-        mounted() {
-            console.log('My Prop Wallet ', this.myWallet);
-            if(this.myWallet > '')
+        async WalletConnect() {
+            let status = await this.$Web3.setWalletConnectProvider();
+            if(status) {
+                let provider = await this.$Web3.getProvider();
+                this.myWallet = provider.provider.accounts[0];
+                provider.provider.on("disconnect", (error, payload) => {
+                    console.log("WalletConnect disconnected: ", payload);
+                    this.WalletConnectActive = false;
+                    this.AccountsList = null;
+                });
+                this.WalletConnectActive = true;
+            } else {
+                this.WalletConnectActive = false;
+                this.AccountsList = null;
+            }
+        },
+        isMetamaskConnected: async function () {
+            if (window.ethereum) {
+                this.$Web3.setProvider(window.ethereum);
+                let network = await this.$Web3.getProvider().getNetwork();
+                if(network.chainId === 56) {
+                    try {
+                        this.myWallet = await this.$Web3.getSigner().getAddress();
+                        this.MetamaskActive = true;
+//                         await this.$Web3.getProvider().send("eth_requestAccounts");
+                        return true;
+                    } catch (error) {
+                        this.MetamaskActive = false;
+                        console.log(error);
+                        return false;
+                    }
+                } else {
+                    alert('Wrong network. Switch to the Binance Smart Chain');
+                }
+            }
+        }
+    },
+    watch: {
+        myWallet(newWallet, oldWallet) {
+            console.log('Watcher myWallet');
+            console.log(newWallet);
+            if(newWallet > '') {
                 this.loadBalance();
+                this.getBoxes();
+                this.getAllowance();
+                this.getStakes();
+            } else {
+                this.pogData.pogBalance = '0.00';
+            }
+        }
+    },
+    created() {
+        this.$nuxt.$on('send-allow-transaction', () => {
+            this.sendAllow();
+        });
+        this.$nuxt.$on('stake-for-case', (params) => {
+            this.stakePog(params);
+        });
+        this.$nuxt.$on('claim-stakes', (params) => {
+            this.claimPog(params);
+        });
+    },
+    beforeDestroy(){
+        this.$nuxt.$off('send-allow-transaction');
+        this.$nuxt.$off('stake-for-case');
+        this.$nuxt.$off('claim-stakes');
+    },
+    async mounted() {
+        if(await this.isMetamaskConnected()) {
+            console.log('My Wallet ', this.myWallet);
+            if (typeof window.ethereum !== "undefined") {
+                window.ethereum.on('accountsChanged', (accounts) => {
+                    this.myWallet = accounts[0];
+                });
+            }
+
+        } else {
+//            alert('Can not connect to Metamask wallet');
         }
     }
+
+}
 </script>
 
 <style>
+body {
+    line-height: 150%;
+}
+.casesCards {
+    display: flex;
+}
+.buttonConnect {
+    padding: 8px;
+    height: 40px;
+}
+.buttonConnect.walletConnect {
+    background: #f0f0f0 url("~/assets/walletConnect.svg") no-repeat 0 -32px;
+    background-size: 150px;
+    width: 155px;
+}
+.buttonConnect.active {
+    background-color: #cff0cf;
+}
+.connectClass {
+    display: flex;
+    justify-content: space-between;
+}
 
 </style>

@@ -1,18 +1,15 @@
 {
-  "name": "exchange",
-  "version": "1.0.0",
-  "private": true,
+  "name": "nuxt-with-vuikit",
+  "dependencies": {
+    "ethers": "latest",
+    "@walletconnect/web3-provider": "latest",
+    "nuxt": "latest"
+  },
   "scripts": {
     "dev": "nuxt",
     "build": "nuxt build",
     "start": "nuxt start",
-    "generate": "nuxt generate"
-  },
-  "dependencies": {
-    "core-js": "^3.15.1",
-    "@walletconnect/web3-provider": "^1.7.0",
-    "ethers": "^5.5.1",
-    "nuxt": "^2.15.7"
-
+    "generate": "nuxt generate",
+    "post-update": "yarn upgrade --latest"
   }
 }
