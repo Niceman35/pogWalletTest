@@ -3,8 +3,8 @@
         <div>
             <div class="header">{{ caseName }} NFT Box</div>
             <div>Price: {{casePrice}} POG</div><br/>
-            <div><b>Boxes in wallet: {{balance}}</b></div>
-            <div><span v-for="num in parseInt(balance)" style="width: 30px; height: 30px;" :key="num">🎁</span> </div><br/>
+            <div><b>Boxes in wallet: {{cardData.balance}}</b></div>
+            <div><span v-for="num in parseInt(cardData.balance)" style="width: 30px; height: 30px;" :key="num">🎁</span> </div><br/>
             <div>Your current stakes:</div>
             <hr/>
             <div class="stakes-list">
@@ -21,10 +21,10 @@
         </div>
         <br/>
         <div class="with-button">
-            <button @click="$nuxt.$emit('send-allow-transaction')" :class="{ 'approved': (approvedNum === 2) }">Approve {{ approvedNum }} / 2</button><br/><br/>
+            <button @click="$nuxt.$emit('send-allow-transaction')" :disabled="approved" :class="{ 'approved': approved }">Approve</button><br/><br/>
             <div>
                 Boxes count: <input class="casesCount" v-model.number="casesToStake" type="number" step="1" min="1" size="3"><br/>
-                <button @click="$nuxt.$emit('stake-for-case', [caseId, Math.floor(casesToStake), stakePrice])" :disabled="casesToStake<1 || approvedNum < 2 || stakePrice > parseFloat(pogBalance)">
+                <button @click="$nuxt.$emit('stake-for-case', [caseId, Math.floor(casesToStake), stakePrice])" :disabled="casesToStake<1 || !approved || stakePrice > parseFloat(pogBalance)">
                     Stake {{stakePrice}} POG for 14 days and <br/>get {{casesToStake}} {{caseName}} box{{getPlural(casesToStake)}}
                 </button>
             </div>
@@ -35,7 +35,7 @@
 <script>
 export default {
     name: "pogStakeCard",
-    props:  ['caseName', 'pogBalance', 'balance', 'approvedNum', 'stakes'],
+    props:  ['caseName', 'pogBalance', 'cardData', 'approved'],
     data() {
         return {
             casesToStake: 1
@@ -92,7 +92,7 @@ export default {
             const timeNow = Math.floor(+new Date()/1000);
             const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
 
-            let stakes = this.stakes;
+            let stakes = this.cardData.stakes;
             if(Array.isArray(stakes)) {
                 for(let i=0; i < stakes.length; i++) {
                     stakes[i].amountPOG = 0;
@@ -118,8 +118,8 @@ export default {
             // returns array [POG, ExtraCases]
             let unlock = [0,0];
             if(Array.isArray(this.myStakes)) {
-                for(let i =0; i < this.stakes.length; i++) {
-                    const stake = this.stakes[i];
+                for(let i =0; i < this.myStakes.length; i++) {
+                    const stake = this.myStakes[i];
                     unlock[0] += stake.amountPOG;
                     unlock[1] += stake.extraItems;
                 }

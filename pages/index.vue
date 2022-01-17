@@ -15,24 +15,20 @@
           <div class="casesCards">
               <pog-stake-card case-name="Bronze"
                               :pog-balance="pogData.pogBalance"
-                              :balance="pogData.bronzeNFT"
-                              :approved-num="approvedNum"
-                              :stakes="pogData.activeStakes['5']"></pog-stake-card>
+                              :card-data="pogData.bronze"
+                              :approved="pogData.approvedCoin"></pog-stake-card>
               <pog-stake-card case-name="Silver"
                               :pog-balance="pogData.pogBalance"
-                              :balance="pogData.silverNFT"
-                              :approved-num="approvedNum"
-                              :stakes="pogData.activeStakes['4']"></pog-stake-card>
+                              :card-data="pogData.silver"
+                              :approved="pogData.approvedCoin"></pog-stake-card>
               <pog-stake-card case-name="Gold"
                               :pog-balance="pogData.pogBalance"
-                              :balance="pogData.goldNFT"
-                              :approved-num="approvedNum"
-                              :stakes="pogData.activeStakes['2']"></pog-stake-card>
+                              :card-data="pogData.gold"
+                              :approved="pogData.approvedCoin"></pog-stake-card>
               <pog-stake-card case-name="Platinum"
                               :pog-balance="pogData.pogBalance"
-                              :balance="pogData.platinumNFT"
-                              :approved-num="approvedNum"
-                              :stakes="pogData.activeStakes['3']"></pog-stake-card>
+                              :card-data="pogData.platinum"
+                              :approved="pogData.approvedCoin"></pog-stake-card>
           </div>
       </div>
 </template>
@@ -45,26 +41,16 @@ export default {
             MetamaskActive: false,
             WalletConnectActive: false,
             pogData: {
-                approvedNFT: false,
                 approvedCoin: false,
                 pogBalance:'0.0',
-                bronzeNFT:'0',
-                silverNFT:'0',
-                goldNFT:'0',
-                platinumNFT:'0',
-                activeStakes: {}
+                bronze: {balance: '0', stakes: {}},
+                silver: {balance: '0', stakes: {}},
+                gold: {balance: '0', stakes: {}},
+                platinum: {balance: '0', stakes: {}},
             },
         };
     },
     computed: {
-        approvedNum() {
-            let counter = 0;
-            if(this.pogData.approvedNFT)
-                counter++;
-            if(this.pogData.approvedCoin)
-                counter++;
-            return counter;
-        }
     },
     methods: {
         getBalance() {
@@ -81,10 +67,10 @@ export default {
             console.log('Load NFT balances');
             if(this.myWallet > '') {
                 this.$Web3.NFTBalance(this.myWallet).then(balance => {
-                    this.pogData.bronzeNFT = balance[0].toString();
-                    this.pogData.silverNFT = balance[1].toString();
-                    this.pogData.goldNFT = balance[2].toString();
-                    this.pogData.platinumNFT = balance[3].toString();
+                    this.pogData.bronze.balance = balance[0].toString();
+                    this.pogData.silver.balance = balance[1].toString();
+                    this.pogData.gold.balance = balance[2].toString();
+                    this.pogData.platinum.balance = balance[3].toString();
                 });
             }
         },
@@ -92,8 +78,7 @@ export default {
             console.log('Check allowance');
             if(this.myWallet > '') {
                 this.$Web3.CheckApprove(this.myWallet).then(allowance => {
-                    this.pogData.approvedNFT = allowance[0];
-                    this.pogData.approvedCoin = allowance[1];
+                    this.pogData.approvedCoin = allowance;
                 });
             }
         },
@@ -101,17 +86,20 @@ export default {
             console.log('getStakes');
             if(this.myWallet > '') {
                 this.$Web3.getStakes(this.myWallet).then(stakes => {
-                    this.pogData.activeStakes = stakes;
+                    const stakeNums = {
+                        '5': 'bronze',
+                        '4': 'silver',
+                        '2': 'gold',
+                        '3': 'platinum'
+                    }
+                    for (const stakeNum in stakes) {
+                        this.pogData[stakeNums[stakeNum]].stakes = stakes[stakeNum];
+                    }
                 })
             }
         },
         async sendAllow() {
             console.log('sendAllow');
-            if(!this.pogData.approvedNFT) {
-                let status = await this.$Web3.ApproveNFT();
-                if(status)
-                    this.pogData.approvedNFT = true;
-            }
             if(!this.pogData.approvedCoin) {
                 let status = await this.$Web3.ApproveCoin();
                 if(status)
@@ -123,7 +111,7 @@ export default {
             const boxCount = params[1];
             console.log('StakeBox');
             if(this.pogData.pogBalance < params[3]) {alert('You do not have enough POG balance. '+params[3]+' POG needed'); return;}
-            if(this.approvedNum < 2) {alert('You do not have all approves needed'); return;}
+            if(!this.pogData.approvedCoin) {alert('You do not approved POG transfers'); return;}
             let status = await this.$Web3.stakePOG(boxID, boxCount);
             if(status) {
                 alert('Stake successful.');
@@ -184,7 +172,8 @@ export default {
             if (window.ethereum) {
                 this.$Web3.setProvider(window.ethereum);
                 let network = await this.$Web3.getProvider().getNetwork();
-                if(network.chainId === 56) {
+                console.log(network.chainId);
+                if(network.chainId === 56) { //97
                     try {
                         this.myWallet = await this.$Web3.getSigner().getAddress();
                         this.MetamaskActive = true;

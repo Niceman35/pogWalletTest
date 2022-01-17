@@ -104,13 +104,11 @@ EthersPlugin.install = function (Vue, options) {
 
     blockchain.CheckApprove = async function(account) {
         console.log('Check Approves for: '+ account);
-        let approves = [false,false];
-        const NFTContract = new ethers.Contract(NFTAddress, NFTAbi, provider);
-        approves[0] = await NFTContract.isApprovedForAll(account, StakeAddress);
+        let approves = false;
         const POGContract = new ethers.Contract(POGAddress, POGAbi, provider);
         let allowance = await POGContract.allowance(account, StakeAddress);
         if(allowance > 100000000)
-            approves[1] = true;
+            approves = true;
         return approves;
     };
 
