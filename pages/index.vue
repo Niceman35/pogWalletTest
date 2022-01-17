@@ -67,8 +67,8 @@ export default {
         }
     },
     methods: {
-        loadBalance: function() {
-            console.log('Load Bals');
+        getBalance() {
+            console.log('Load POG balance');
             if(this.myWallet > '') {
                 this.$Web3.POGBalance(this.myWallet).then(balance => {
                     this.pogData.pogBalance = balance;
@@ -77,7 +77,8 @@ export default {
                 this.pogData.pogBalance = '0.00';
             }
         },
-        getBoxes: function() {
+        getBoxes() {
+            console.log('Load NFT balances');
             if(this.myWallet > '') {
                 this.$Web3.NFTBalance(this.myWallet).then(balance => {
                     this.pogData.bronzeNFT = balance[0].toString();
@@ -87,17 +88,24 @@ export default {
                 });
             }
         },
-        getAllowance: function () {
+        getAllowance() {
             console.log('Check allowance');
             if(this.myWallet > '') {
                 this.$Web3.CheckApprove(this.myWallet).then(allowance => {
-                    console.log(allowance);
                     this.pogData.approvedNFT = allowance[0];
                     this.pogData.approvedCoin = allowance[1];
                 });
             }
         },
-        sendAllow: async function () {
+        async getStakes() {
+            console.log('getStakes');
+            if(this.myWallet > '') {
+                this.$Web3.getStakes(this.myWallet).then(stakes => {
+                    this.pogData.activeStakes = stakes;
+                })
+            }
+        },
+        async sendAllow() {
             console.log('sendAllow');
             if(!this.pogData.approvedNFT) {
                 let status = await this.$Web3.ApproveNFT();
@@ -110,54 +118,36 @@ export default {
                     this.pogData.approvedCoin = true;
             }
         },
-        getStakes: async function() {
-            console.log('getStakes');
-            if(this.myWallet > '') {
-                this.$Web3.getStakes(this.myWallet).then(stakes => {
-                    const units = {
-                        year  : 24 * 60 * 60 * 365,
-                        month : 24 * 60 * 60 * 365/12,
-                        day   : 24 * 60 * 60,
-                        hour  : 60 * 60,
-                        minute: 60,
-                        second: 1
-                    }
-                    this.pogData.activeStakes = stakes;
-                })
-            }
-        },
-        stakePog: async function (params) {
-
+        async stakePog(params) {
             const boxID = params[0];
             const boxCount = params[1];
-            const stakeAmount = params[2];
             console.log('StakeBox');
-            if(this.pogData.pogBalance < params[3]) {alert('You do not have enought POG balance. '+params[3]+' POG needed'); return;}
+            if(this.pogData.pogBalance < params[3]) {alert('You do not have enough POG balance. '+params[3]+' POG needed'); return;}
             if(this.approvedNum < 2) {alert('You do not have all approves needed'); return;}
             let status = await this.$Web3.stakePOG(boxID, boxCount);
             if(status) {
                 alert('Stake successful.');
-                this.loadBalance();
-                this.getBoxes();
-                this.getStakes();
+                await this.getBalance();
+                await this.getBoxes();
+                await this.getStakes();
             } else {
                 alert('Error: Transaction not confirmed.');
             }
         },
-        claimPog: async function (stakeIDs) {
+        async claimPog(stakeIDs) {
             console.log('StakeBox');
             console.log(stakeIDs);
             let status = await this.$Web3.claimPOG(stakeIDs);
             if(status) {
                 alert('Claimed successful.');
-                this.loadBalance();
-                this.getBoxes();
-                this.getStakes();
+                await this.getBalance();
+                await this.getBoxes();
+                await this.getStakes();
             } else {
                 alert('Error: Transaction not confirmed.');
             }
         },
-        connectMatamask: async function () {
+        async connectMatamask() {
             if (window.ethereum) {
                 this.$Web3.setProvider(window.ethereum);
                 try {
@@ -182,15 +172,15 @@ export default {
                 provider.provider.on("disconnect", (error, payload) => {
                     console.log("WalletConnect disconnected: ", payload);
                     this.WalletConnectActive = false;
-                    this.AccountsList = null;
+                    this.myWallet = '';
                 });
                 this.WalletConnectActive = true;
             } else {
                 this.WalletConnectActive = false;
-                this.AccountsList = null;
+                this.myWallet = '';
             }
         },
-        isMetamaskConnected: async function () {
+        async isMetamaskConnected() {
             if (window.ethereum) {
                 this.$Web3.setProvider(window.ethereum);
                 let network = await this.$Web3.getProvider().getNetwork();
@@ -216,7 +206,7 @@ export default {
             console.log('Watcher myWallet');
             console.log(newWallet);
             if(newWallet > '') {
-                this.loadBalance();
+                this.getBalance();
                 this.getBoxes();
                 this.getAllowance();
                 this.getStakes();
@@ -254,7 +244,6 @@ export default {
 //            alert('Can not connect to Metamask wallet');
         }
     }
-
 }
 </script>
 
